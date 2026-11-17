@@ -1910,6 +1910,31 @@ static void net_write_sockinfo(s32 s, lv2_socket& sock, sys_net_sockinfo_t& info
 	sys_net.trace("sys_net_infoctl(cmd=6): %s", info);
 }
 
+namespace
+{
+	// TEMPORARY DEBUG: dumps guest memory of the arguments of the sys_net stubs
+	std::string sys_net_dbg_dump(u32 addr, u32 size)
+	{
+		if (!addr || !vm::check_addr(addr, vm::page_readable, size))
+		{
+			return "<unreadable>";
+		}
+
+		const u8* ptr = vm::get_super_ptr<const u8>(addr);
+		std::string out;
+
+		for (u32 i = 0; i < size; i++)
+		{
+			constexpr char digits[] = "0123456789abcdef";
+			out += digits[ptr[i] >> 4];
+			out += digits[ptr[i] & 15];
+			out += (i % 16 == 15) ? '\n' : ' ';
+		}
+
+		return out;
+	}
+} // namespace
+
 error_code sys_net_infoctl(ppu_thread& ppu, s32 cmd, vm::ptr<void> arg)
 {
 	ppu.state += cpu_flag::wait;
@@ -1917,7 +1942,7 @@ error_code sys_net_infoctl(ppu_thread& ppu, s32 cmd, vm::ptr<void> arg)
 	if (cmd == 6 || cmd == 9)
 		sys_net.notice("sys_net_infoctl(cmd=%d, arg=*0x%x)", cmd, arg);
 	else
-		sys_net.todo("sys_net_infoctl(cmd=%d, arg=*0x%x)", cmd, arg);
+		sys_net.todo("sys_net_infoctl(cmd=%d, arg=*0x%x) DBG:\n%s", cmd, arg, sys_net_dbg_dump(arg.addr(), 0x60));
 
 	// TODO
 	switch (cmd)
@@ -2031,7 +2056,7 @@ error_code sys_net_control(ppu_thread& ppu, u32 arg1, s32 arg2, vm::ptr<void> ar
 		return CELL_OK;
 	}
 
-	sys_net.todo("sys_net_control(0x%x, %d, *0x%x, %d)", arg1, arg2, arg3, arg4);
+	sys_net.todo("sys_net_control(0x%x, %d, *0x%x, %d) DBG arg1:\n%s\nDBG buf:\n%s", arg1, arg2, arg3, arg4, sys_net_dbg_dump(arg1, 0x40), sys_net_dbg_dump(arg3.addr(), 0x20));
 	return CELL_OK;
 }
 
@@ -2303,7 +2328,7 @@ error_code sys_net_bnet_ioctl(ppu_thread& ppu, s32 arg1, u32 arg2, u32 arg3)
 	default: break;
 	}
 
-	sys_net.todo("sys_net_bnet_ioctl(%d, 0x%x, 0x%x)", arg1, arg2, arg3);
+	sys_net.todo("sys_net_bnet_ioctl(%d, 0x%x, 0x%x) DBG:\n%s", arg1, arg2, arg3, sys_net_dbg_dump(arg3, arg2 == 0x8210698f ? 0x80 : 0x40));
 	return CELL_OK;
 }
 
